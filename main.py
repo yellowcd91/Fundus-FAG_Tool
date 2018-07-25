@@ -10,9 +10,9 @@ import skimage.morphology, skimage.color, skimage.transform, skimage.io, skimage
 import cv2
 
 
-class ImageViewer(QMainWindow):
+class FundusFAG_Tool(QMainWindow):
     def __init__(self):
-        super(ImageViewer, self).__init__()
+        super(FundusFAG_Tool, self).__init__()
         self.imageLabel = QLabel()
         self.imageLabel.setBackgroundRole(QPalette.Base)
         self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
@@ -32,7 +32,7 @@ class ImageViewer(QMainWindow):
         self.menuBarRect = [self.menuBar().rect().x(),self.menuBar().rect().y(),\
                             self.menuBar().rect().width(),self.menuBar().rect().height()]
         # self.resize(2000, 1000+self.menuBarRect[3]) # default size
-        self.fixed_image_size = [1500/2, 2000/2] # resize all of images
+        self.fixed_image_size = [1500/4, 2000/4] # resize all of images
         self.scaleFactor = 1.0 # default scale factor
         self.isRunning = False # state of program
         self.bytesPerComponent = 3 # RGB
@@ -47,10 +47,28 @@ class ImageViewer(QMainWindow):
         self.curMousePt = [0, 0] # declare current cursor point
         self.pressCtrl = False # (do no operating) state for pressing control key
 
-        self.fundus = [] # (to do)
-        self.FAG = [] # (to do)
+        self.information = [] # (to do)
+
+        # radio button dock for selecting information
+        self.set_radio_button()
+        self.group1.buttonClicked.connect(self.kind_toggled) # connect radio button click event to function
 
         # list dock for subdirectory
+        self.set_subdirectory_list()
+
+        # put information as text
+        self.font = cv2.FONT_HERSHEY_SIMPLEX
+
+        # show full screen
+        self.showFullScreen()
+        # open directory browser
+        self.openDirectory()
+
+    # to do
+    def kind_toggled(self):
+        print('clicked')
+
+    def set_subdirectory_list(self):
         self.widget1 = QDockWidget("sub directory", self)
         self.listWidget = QListWidget()
         self.listWidget.clear()
@@ -59,10 +77,53 @@ class ImageViewer(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.widget1)
         self.listWidget.itemDoubleClicked.connect(self.item_double_click)
 
-        # show full screen
-        self.showFullScreen()
-        # open directory browser
-        self.openDirectory()
+    def set_radio_button(self):
+        self.group1 = QButtonGroup()
+        self.group2 = QButtonGroup()
+        self.b1 = QRadioButton("Fundus")
+        self.b2 = QRadioButton("FAG ")
+        self.b3 = QRadioButton("Left")
+        self.b4 = QRadioButton("Right")
+        self.group1.addButton(self.b1)
+        self.group1.addButton(self.b2)
+        self.group2.addButton(self.b3)
+        self.group2.addButton(self.b4)
+
+        self.widget2 = QDockWidget("button", self)
+        buttonWidget = QLabel()
+        buttonWidget.setAlignment(Qt.AlignCenter)
+        buttonWidget.setFrameShape(QFrame.StyledPanel)
+
+        button_layout = QVBoxLayout()
+
+        kind_widget = QLabel()
+        laterality_widget = QLabel()
+        kind_widget.setAlignment(Qt.AlignCenter)
+        kind_widget.setFrameShape(QFrame.StyledPanel)
+        laterality_widget.setAlignment(Qt.AlignCenter)
+        laterality_widget.setFrameShape(QFrame.StyledPanel)
+
+        kind_layout = QVBoxLayout()
+        laterality_layout = QVBoxLayout()
+        kind_layout.addWidget(self.b1)
+        kind_layout.addWidget(self.b2)
+        laterality_layout.addWidget(self.b3)
+        laterality_layout.addWidget(self.b4)
+
+        kind_widget.setLayout(kind_layout)
+        laterality_widget.setLayout(laterality_layout)
+
+        button_layout.addWidget(kind_widget)
+        button_layout.addWidget(laterality_widget)
+
+        buttonWidget.setLayout(button_layout)
+        self.widget2.setWidget(buttonWidget)
+
+        self.widget2.setFloating(False)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.widget2)
+
+        self.b2.setChecked(True)
+        self.b3.setChecked(True)
 
     # add item into list viewer
     def addSubDirIntoListViewer(self):
@@ -104,11 +165,11 @@ class ImageViewer(QMainWindow):
         if self.nFile ==0:
             return
 
-        # get mouse position
-        cursor = [int(np.round((QMouseEvent.pos().y() - self.menuBarRect[3]))), \
-                  int(np.round(QMouseEvent.pos().x()))]
-        self.curMousePt = cursor # record current mouse position
-        self.paint() # draw current mouse position
+        # # get mouse position
+        # cursor = [int(np.round((QMouseEvent.pos().y() - self.menuBarRect[3]))), \
+        #           int(np.round(QMouseEvent.pos().x()))]
+        # self.curMousePt = cursor # record current mouse position
+        # self.paint() # draw current mouse position
 
     # key press event
     def keyPressEvent(self, event):
@@ -193,7 +254,7 @@ class ImageViewer(QMainWindow):
     def paint(self):
         # get rows of current subdirectory image set
         if self.rows == -1:
-            self.rows = int(np.ceil((len(self.img_list)-1)/float(self.cols)))
+            self.rows = int(np.ceil((len(self.img_list))/float(self.cols)))
 
         # draw all of image into canvas
         if self.need2DrawCanvas:
@@ -227,12 +288,20 @@ class ImageViewer(QMainWindow):
         ## draw additional information like selected image, current cursor
         # copy canvas
         cur_canvas = self.canvas.copy()
+        # for i in range(len(self.drawPosition)):
+        #     cur_img = cur_canvas[self.drawPosition[i][0]:self.drawPosition[i][1],
+        #     self.drawPosition[i][2]:self.drawPosition[i][3]]
+        #     cv2.putText(cur_img, 'Fundus/FAG', (cur_img.shape[1] / 4, 20), self.font, 1/self.scaleFactor,
+        #                 (255, 255, 255), 1, cv2.LINE_AA)
+        #     cv2.putText(cur_img, 'L/R', (cur_img.shape[1] / 4 * 3, 20), self.font, 1/self.scaleFactor, (255, 255, 255),
+        #                 1, cv2.LINE_AA)
+
         # draw selected image differently
         cur_canvas[self.drawPosition[self.cur_fidx][0]:self.drawPosition[self.cur_fidx][1],
         self.drawPosition[self.cur_fidx][2]:self.drawPosition[self.cur_fidx][3], 2] = 128
 
-        # draw current curcor point
-        cv2.circle(cur_canvas, (int((self.curMousePt[1]-4)/self.scaleFactor), int((self.curMousePt[0]-4)/self.scaleFactor)), 2, (255,0,0), -1)
+        # # draw current curcor point
+        # cv2.circle(cur_canvas, (int((self.curMousePt[1]-4)/self.scaleFactor), int((self.curMousePt[0]-4)/self.scaleFactor)), 2, (255,0,0), -1)
 
         # update viewing layer(similar to update device context in MFC)
         self.bytesPerLine = self.bytesPerComponent * cur_canvas.shape[1]
@@ -276,6 +345,7 @@ class ImageViewer(QMainWindow):
             if len(img.shape)==2:
                 img = skimage.color.gray2rgb(img)
             self.img_list.append(img)
+            self.information.append()
 
         self.nFile = len(self.file_path_list)
         if self.nFile != 0:
@@ -328,6 +398,7 @@ class ImageViewer(QMainWindow):
     def openChangedDirectory(self):
         self.need2DrawCanvas = True
         self.cur_fidx = 0
+        self.rows = -1
         self.file_path_list = []
         self.img_list = []
 
@@ -367,8 +438,8 @@ class ImageViewer(QMainWindow):
         self.normalSizeAct = QAction("&Normal Size", self, shortcut="Ctrl+S",
                 enabled=False, triggered=self.normalSize)
 
-        # self.fitToWindowAct = QAction("&Fit to Window", self, enabled=False,
-        #         checkable=True, shortcut="Ctrl+F", triggered=self.fitToWindow)
+        self.fitToWindowAct = QAction("&Fit to Window", self, enabled=False,
+                checkable=True, shortcut="Ctrl+F", triggered=self.fitToWindow)
 
         self.aboutQtAct = QAction("About &Qt", self,
                 triggered=QApplication.instance().aboutQt)
@@ -390,7 +461,7 @@ class ImageViewer(QMainWindow):
         self.viewMenu.addAction(self.zoomOutAct)
         self.viewMenu.addAction(self.normalSizeAct)
         self.viewMenu.addSeparator()
-        # self.viewMenu.addAction(self.fitToWindowAct)
+        self.viewMenu.addAction(self.fitToWindowAct)
 
         self.helpMenu = QMenu("&Help", self)
         self.helpMenu.addAction(self.aboutQtAct)
@@ -400,7 +471,7 @@ class ImageViewer(QMainWindow):
         self.menuBar().addMenu(self.helpMenu)
 
     def updateActions(self):
-        self.zoomInAct.setEnabled(not self.fitToWindowAct.isChecked())
+        # self.zoomInAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.zoomOutAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.normalSizeAct.setEnabled(not self.fitToWindowAct.isChecked())
 
@@ -422,7 +493,7 @@ class ImageViewer(QMainWindow):
 ## main call ##
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    imageViewer = ImageViewer()
-    imageViewer.show()
+    gui = FundusFAG_Tool()
+    gui.show()
 sys.exit(app.exec_())
 
